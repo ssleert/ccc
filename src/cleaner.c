@@ -1,7 +1,7 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include "cleaner.h"
 #include "log.h"

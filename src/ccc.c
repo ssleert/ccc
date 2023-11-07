@@ -25,9 +25,12 @@ static inline int32_t GetCleanLevelByPercent(int32_t Percent) {
   assert(Percent < 0 && Percent > 100);
 
   int32_t Result = 0;
-  if (Percent <= ConfigLevelsFirst)  Result++;
-  if (Percent <= ConfigLevelsSecond) Result++;
-  if (Percent <= ConfigLevelsThird)  Result++;
+  if (Percent <= ConfigLevelsFirst)
+    Result++;
+  if (Percent <= ConfigLevelsSecond)
+    Result++;
+  if (Percent <= ConfigLevelsThird)
+    Result++;
   return Result;
 }
 
@@ -51,8 +54,9 @@ static Error Init(const char ConfigFileStr[], const char LogFileStr[]) {
   }
 
   errno = 0;
-  CccLogFile = (strncmp(LogFileStr, "stdout", BUFSIZE) == 0) 
-    ? stdout : fopen(ConfigLogFile, "a");
+  CccLogFile = (strncmp(LogFileStr, "stdout", BUFSIZE) == 0)
+                   ? stdout
+                   : fopen(ConfigLogFile, "a");
   if (CccLogFile == NULL) {
     return ErrorNew("Log File open error: %s", strerror(errno));
   }
@@ -143,7 +147,7 @@ int main(int argc, char *argv[]) {
 
   LogInfo("Total mem is %.2f.", (double)TotalMem.Val / 1024);
   LogInfo("Free mem is %.2f.", (double)FreeMem.Val / 1024);
- 
+
   // count errors before stop
   int32_t ErrorCounter = 0;
   int32_t Slept = 0;
@@ -161,7 +165,8 @@ int main(int argc, char *argv[]) {
 
     int32_t Percent = ((double)FreeMem.Val / TotalMem.Val) * 100;
     int32_t CleanLevel = GetCleanLevelByPercent(Percent);
-    FlogInfo(CccLogFile, "Free memory amount: %.2fmib or %d%% and CleanLevel = %d", 
+    FlogInfo(CccLogFile,
+             "Free memory amount: %.2fmib or %d%% and CleanLevel = %d",
              (double)FreeMem.Val / 1024, Percent, CleanLevel);
 
     if (CleanLevel != 0) {
@@ -170,7 +175,8 @@ int main(int argc, char *argv[]) {
       }
       Err = CleanerDropCaches(DropCachesFile, CleanLevel);
       if (ErrorIs(&Err)) {
-        FlogErr(CccLogFile, "Error with CleanerDropCaches(): %s.", ErrorWhat(&Err));
+        FlogErr(CccLogFile, "Error with CleanerDropCaches(): %s.",
+                ErrorWhat(&Err));
         ErrorCounter++;
       }
       FlogInfo(CccLogFile, "Caches dropped.");
