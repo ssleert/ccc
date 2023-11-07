@@ -1,4 +1,5 @@
 DEBUG      ?= 1
+STATIC     ?= 0
 UNAME := $(uname)
 
 
@@ -16,20 +17,24 @@ CFLAGS_RELEASE = $(CFLAGS) -O3 -DNDEBUG -DNTRACE
 ifeq ($(CC),gcc)
   CFLAGS_RELEASE += -flto
 endif
+ifeq ($(STATIC),1)
+	CFLAGS_RELEASE += -static
+endif
 
 CFLAGS_DEBUG   = $(CFLAGS) -O0 -g3 -fstack-protector -ftrapv -fwrapv
 CFLAGS_DEBUG  += -fsanitize=address,undefined
 
 PREFIX     ?= /usr/local
 BINDIR     ?= $(PREFIX)/bin
-MANDIR     ?= $(PREFIX)/man/man1
+CONFDIR    ?= $(PREFIX)/etc
+ASSETSPATH ?= ./assets/
 INSTALL    ?= install -s
 
 SRCDIR     ?= src
 OBJDIR     ?= obj
 
 PROG       = ccc
-MAN        = $(PROG).1
+CONFIG     = $(PROG).conf
 
 CFILES     != ls $(SRCDIR)/*.c
 COBJS       = ${CFILES:.c=.o}
@@ -53,10 +58,17 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/%.h
 $(OBJDIR):
 	mkdir $(OBJDIR)
 
+format: 
+	clang-format -i ./src/*
+
 install: all
-	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
+	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(CONFDIR)
 	$(INSTALL) $(PROG) $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 644 $(MAN) $(DESTDIR)$(MANDIR)/$(MAN)
+	cp $(ASSETSPATH)$(CONFIG) $(DESTDIR)$(CONFDIR)
+
+uninstall:
+	rm $(DESTDIR)$(BINDIR)/$(PROG)
+	rm $(DESTDIR)$(CONFDIR)/$(CONFIG)
 
 clean:
 	rm -rf $(PROG) $(OBJDIR)

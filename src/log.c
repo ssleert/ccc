@@ -32,6 +32,7 @@ static inline struct tm *LogCurrentTime(void) {
 
 void LogFlog(LOG_VERBOSITY Verbosity, FILE *Stream, size_t Line,
              const char Filename[], const char Fmt[], ...) {
+  assert(Verbosity >= 0 && Verbosity <= LOG_VERBOSITY_LEN);
   assert(Stream != NULL);
   assert(Filename != NULL);
   assert(Fmt != NULL);

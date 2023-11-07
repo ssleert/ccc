@@ -8,10 +8,9 @@
 #include "error.h"
 #include "log.h"
 
-#define ConfigFileDef "/etc/ccc.conf"
+#define ConfigFileDef "/usr/local/etc/ccc.conf"
 
 extern char ConfigLogFile[BUFSIZE];
-extern LOG_VERBOSITY ConfigLogLevel;
 extern int32_t ConfigLevelsFirst;
 extern int32_t ConfigLevelsSecond;
 extern int32_t ConfigLevelsThird;

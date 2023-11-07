@@ -15,7 +15,7 @@ typedef enum {
   LOG_VERBOSITY_Error,
   LOG_VERBOSITY_Fatal,
 } LOG_VERBOSITY;
-#define LOG_VERBOSITY_LEN 6
+#define LOG_VERBOSITY_LEN 5
 
 extern LOG_VERBOSITY LogMaxVerbosity;
 extern bool LogColored;

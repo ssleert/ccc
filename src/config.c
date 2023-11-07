@@ -6,7 +6,6 @@
 #include "log.h"
 
 char ConfigLogFile[BUFSIZE] = "/tmp/ccc.log";
-LOG_VERBOSITY ConfigLogLevel = LOG_VERBOSITY_Info;
 int32_t ConfigLevelsFirst = 15;
 int32_t ConfigLevelsSecond = 10;
 int32_t ConfigLevelsThird = 5;
@@ -27,18 +26,6 @@ static int32_t IniCallBackFunc(const char Section[], const char Key[],
     ConfigLogFile[sizeof(ConfigLogFile) - 1] = '\0';
 
     LogInfo("ConfigLogFile = '%s'", ConfigLogFile);
-    return 0;
-  }
-
-  if (IniCheckValue(Section, Key, "Log", "Level")) {
-    int8_t LogLevel = atoi(Val);
-    if (LogLevel < 0 || LogLevel > LOG_VERBOSITY_LEN) {
-      LogErr("Error with LogLevel. current setted level is INFO");
-      return 0;
-    }
-
-    ConfigLogLevel = LogLevel;
-    LogInfo("ConfigLogLevel = %d", ConfigLogLevel);
     return 0;
   }
 
@@ -98,7 +85,7 @@ static int32_t IniCallBackFunc(const char Section[], const char Key[],
     }
 
     ConfigErrorMaxAmount = Amount;
-    LogInfo("ConfigTimeoutsCheck = %d", ConfigTimeoutsCheck);
+    LogInfo("ConfigErrorMaxAmount = %d", ConfigErrorMaxAmount);
     return 0;
   }
 
@@ -117,7 +104,7 @@ Error ConfigLoad(const char ConfigFileStr[]) {
     errno = 0;
     ConfigFile = fopen(FileStr, "r");
     if (ConfigFile == NULL) {
-      Err = ErrorNew("Config File open error: %s", strerror(errno));
+      Err = ErrorNew("Config File %s open error: %s", FileStr, strerror(errno));
       goto Cleanup;
     }
 
