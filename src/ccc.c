@@ -1,12 +1,12 @@
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <unistd.h>
-#include <signal.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "ccc.h"
 #include "cleaner.h"
@@ -21,10 +21,9 @@ FILE *CccLockFile = NULL;
 // -c <config file>
 // -a [switch output colors]
 // -s [silent mode]
-static const char    *Options = "c:as";
+static const char *Options = "c:as";
 static const int32_t ExitSignals[] = {
-  SIGTERM, SIGINT, SIGQUIT, 
-  SIGKILL, SIGHUP,
+    SIGTERM, SIGINT, SIGQUIT, SIGKILL, SIGHUP,
 };
 
 static inline void PrintHelp(void) {
@@ -53,7 +52,6 @@ static Error Init(const char ConfigFileStr[], bool SilentLog) {
     return ErrorNew("App needs root");
   }
 
-
   if (stat(ConfigFileStr, &(struct stat){0}) != 0) {
     LogWarn("Config file '%s' doesnt finded.", ConfigFileStr);
   } else {
@@ -65,7 +63,8 @@ static Error Init(const char ConfigFileStr[], bool SilentLog) {
   }
 
   if (SilentLog == false) {
-    LogMaxVerbosity = ConfigLogSilent ? LOG_VERBOSITY_Warn : LOG_VERBOSITY_Trace;
+    LogMaxVerbosity =
+        ConfigLogSilent ? LOG_VERBOSITY_Warn : LOG_VERBOSITY_Trace;
   } else {
     LogMaxVerbosity = LOG_VERBOSITY_Warn;
   }
@@ -109,7 +108,7 @@ static void DeInit(int Signal) {
 }
 
 static void RegDeInit(void) {
-  for (size_t i = 0; i < sizeof(ExitSignals)/sizeof(ExitSignals[0]); ++i) {
+  for (size_t i = 0; i < sizeof(ExitSignals) / sizeof(ExitSignals[0]); ++i) {
     signal(ExitSignals[i], &DeInit);
   }
 }
@@ -117,9 +116,7 @@ static void RegDeInit(void) {
 int main(int argc, char *argv[]) {
   // thx jcs for https://no-color.org/
   char *NoColor = getenv("NO_COLOR");
-	LogColored = (NoColor != NULL && NoColor[0] != '\0')
-              ? false
-              : true;
+  LogColored = (NoColor != NULL && NoColor[0] != '\0') ? false : true;
 
   char ConfigFileStr[BUFSIZE] = "/usr/local/etc/ccc.conf";
   bool SilentLog = false;
@@ -205,8 +202,7 @@ int main(int argc, char *argv[]) {
       }
       Err = CleanerDropCaches(DropCachesFile, CleanLevel);
       if (ErrorIs(&Err)) {
-        LogErr("Error with CleanerDropCaches(): %s.",
-               ErrorWhat(&Err));
+        LogErr("Error with CleanerDropCaches(): %s.", ErrorWhat(&Err));
         ErrorCounter++;
       }
       LogInfo("Caches dropped.");

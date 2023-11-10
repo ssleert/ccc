@@ -1,4 +1,4 @@
-DEBUG      ?= 1
+DEBUG      ?= 0
 STATIC     ?= 0
 UNAME := $(uname)
 

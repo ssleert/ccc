@@ -6,12 +6,12 @@
 #include "log.h"
 
 char ConfigLockFile[BUFSIZE] = "/tmp/ccc.lock";
-bool    ConfigLogSilent      = false;
-bool    ConfigOptionsSync    = true;
-int32_t ConfigLevelsFirst    = 15;
-int32_t ConfigLevelsSecond   = 10;
-int32_t ConfigLevelsThird    = 5;
-size_t  ConfigTimeoutsCheck  = 10;
+bool ConfigLogSilent = false;
+bool ConfigOptionsSync = true;
+int32_t ConfigLevelsFirst = 15;
+int32_t ConfigLevelsSecond = 10;
+int32_t ConfigLevelsThird = 5;
+size_t ConfigTimeoutsCheck = 10;
 int32_t ConfigErrorMaxAmount = 10;
 
 static int32_t IniCallBackFunc(const char Section[], const char Key[],
