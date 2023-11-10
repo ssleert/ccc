@@ -5,11 +5,13 @@
 #include "ini.h"
 #include "log.h"
 
-char ConfigLogFile[BUFSIZE] = "/tmp/ccc.log";
-int32_t ConfigLevelsFirst = 15;
-int32_t ConfigLevelsSecond = 10;
-int32_t ConfigLevelsThird = 5;
-size_t ConfigTimeoutsCheck = 10;
+char ConfigLockFile[BUFSIZE] = "/tmp/ccc.lock";
+bool    ConfigLogSilent      = false;
+bool    ConfigOptionsSync    = true;
+int32_t ConfigLevelsFirst    = 15;
+int32_t ConfigLevelsSecond   = 10;
+int32_t ConfigLevelsThird    = 5;
+size_t  ConfigTimeoutsCheck  = 10;
 int32_t ConfigErrorMaxAmount = 10;
 
 static int32_t IniCallBackFunc(const char Section[], const char Key[],
@@ -17,15 +19,29 @@ static int32_t IniCallBackFunc(const char Section[], const char Key[],
   assert(Section != NULL);
   assert(Key != NULL);
   assert(Val != NULL);
-  if (IniCheckValue(Section, Key, "Log", "File")) {
+  if (IniCheckValue(Section, Key, "Files", "Lock")) {
     if (Val[0] == '\0') {
       LogErr("Error with LogFile. string is empty");
       return 0;
     }
-    strncpy(ConfigLogFile, Val, sizeof(ConfigLogFile) - 1);
-    ConfigLogFile[sizeof(ConfigLogFile) - 1] = '\0';
+    strncpy(ConfigLockFile, Val, sizeof(ConfigLockFile) - 1);
+    ConfigLockFile[sizeof(ConfigLockFile) - 1] = '\0';
 
-    LogInfo("ConfigLogFile = '%s'", ConfigLogFile);
+    LogInfo("ConfigLockFile = '%s'", ConfigLockFile);
+    return 0;
+  }
+
+  if (IniCheckValue(Section, Key, "Log", "Silent")) {
+    ConfigLogSilent = (strncmp(Val, "true", BUFSIZE - 1) == 0);
+
+    LogInfo("ConfigLogSilent = %s", ConfigLogSilent ? "true" : "false");
+    return 0;
+  }
+
+  if (IniCheckValue(Section, Key, "Options", "Sync")) {
+    ConfigOptionsSync = (strncmp(Val, "true", BUFSIZE - 1) == 0);
+
+    LogInfo("ConfigOptionsSync = %s", ConfigOptionsSync ? "true" : "false");
     return 0;
   }
 

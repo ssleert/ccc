@@ -73,4 +73,4 @@ uninstall:
 clean:
 	rm -rf $(PROG) $(OBJDIR)
 
-.PHONY: all install clean
+.PHONY: all install uninstall clean

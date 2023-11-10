@@ -2,6 +2,7 @@
 #define _LOG_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -36,7 +37,7 @@ void LogFlog(LOG_VERBOSITY Verbosity, FILE *Stream, size_t Line,
 #define LogFatal(...)                                                          \
   do {                                                                         \
     LogFlog(LOG_VERBOSITY_Fatal, stderr, __LINE__, __FILE__, __VA_ARGS__);     \
-    exit(1);                                                                   \
+    abort();                                                                   \
   } while (false);
 
 #define FlogTrace(File, ...)                                                   \
@@ -51,7 +52,7 @@ void LogFlog(LOG_VERBOSITY Verbosity, FILE *Stream, size_t Line,
   do {                                                                         \
     LogFlog(LOG_VERBOSITY_Fatal, File, __LINE__, __FILE__, __VA_ARGS__);       \
     fflush(File);                                                              \
-    exit(1);                                                                   \
+    abort();                                                                   \
   } while (false)
 
 #endif /* _LOG_H_ */

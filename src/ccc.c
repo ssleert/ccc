@@ -2,8 +2,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/stat.h>
 
 #include "ccc.h"
 #include "cleaner.h"
@@ -12,22 +15,22 @@
 #include "log.h"
 #include "mem.h"
 
-FILE *CccLogFile = NULL;
+// private
+FILE *CccLockFile = NULL;
 
 // -c <config file>
-// -l <log file>
+// -a [switch output colors]
 // -s [silent mode]
-// -n [disable log colors]
-// -a [disable fs sync before cache drop]
-static const char *Options = "sac:l:n";
+static const char    *Options = "c:as";
+static const int32_t ExitSignals[] = {
+  SIGTERM, SIGINT, SIGQUIT, 
+  SIGKILL, SIGHUP,
+};
 
 static inline void PrintHelp(void) {
   puts(" ccc - simple cache cleaner");
-  puts("  -c <config file>                      ");
-  puts("  -l <log file>                         ");
-  puts("  -s [silent mode]                      ");
-  puts("  -n [disable log colors]               ");
-  puts("  -a [disable fs sync before cache drop]");
+  puts("  -c <config file>");
+  puts("  -a [switch output colors]");
 }
 
 static inline int32_t GetCleanLevelByPercent(int32_t Percent) {
@@ -43,59 +46,83 @@ static inline int32_t GetCleanLevelByPercent(int32_t Percent) {
   return Result;
 }
 
-static Error Init(const char ConfigFileStr[], const char LogFileStr[]) {
+static Error Init(const char ConfigFileStr[], bool SilentLog) {
   assert(ConfigFileStr != NULL);
-  assert(LogFileStr != NULL);
 
-  //if (geteuid() != 0) {
-  //  return ErrorNew("App needs root");
-  //}
-
-  Error Err = ConfigLoad(ConfigFileStr);
-  if (ErrorIs(&Err)) {
-    return ErrorNew("Config error: %s", ErrorWhat(&Err));
+  if (geteuid() != 0) {
+    return ErrorNew("App needs root");
   }
-  LogTrace("Config File Parsed.");
 
-  if (LogFileStr[0] != '\0') {
-    strncpy(ConfigLogFile, LogFileStr, sizeof(ConfigLogFile) - 1);
-    ConfigLogFile[sizeof(ConfigLogFile) - 1] = '\0';
+
+  if (stat(ConfigFileStr, &(struct stat){0}) != 0) {
+    LogWarn("Config file '%s' doesnt finded.", ConfigFileStr);
+  } else {
+    Error Err = ConfigLoad(ConfigFileStr);
+    if (ErrorIs(&Err)) {
+      return ErrorNew("Config error: %s", ErrorWhat(&Err));
+    }
+    LogTrace("Config File Parsed.");
   }
+
+  if (SilentLog == false) {
+    LogMaxVerbosity = ConfigLogSilent ? LOG_VERBOSITY_Warn : LOG_VERBOSITY_Trace;
+  } else {
+    LogMaxVerbosity = LOG_VERBOSITY_Warn;
+  }
+
+  if (stat(ConfigLockFile, &(struct stat){0}) == 0) {
+    return ErrorNew("Lock file accured. ccc already working");
+  }
+  LogTrace("Lock file checked.");
 
   errno = 0;
-  CccLogFile = (strncmp(ConfigLogFile, "stdout", BUFSIZE) == 0)
-                   ? stdout
-                   : fopen(ConfigLogFile, "w");
-  if (CccLogFile == NULL) {
-    return ErrorNew("Log File open error: %s", strerror(errno));
+  FILE *check = fopen(DropCachesFile, "w");
+  if (check == NULL) {
+    return ErrorNew("Cant open %s file for writing: %s", DropCachesFile,
+                    strerror(errno));
   }
-  LogTrace("Log File opened.");
-
-  //errno = 0;
-  //FILE *check = fopen(DropCachesFile, "w");
-  //if (check == NULL) {
-  //  return ErrorNew("Cant open %s file for writing: %s", DropCachesFile,
-  //                  strerror(errno));
-  //}
-  //fclose(check);
+  fclose(check);
   LogTrace("DropCachesFile checked.");
+
+  errno = 0;
+  CccLockFile = fopen(ConfigLockFile, "w");
+  if (CccLockFile == NULL) {
+    return ErrorNew("Cant open %s lock file: %s", ConfigLockFile,
+                    strerror(errno));
+  }
+  fputs("Why do u check lock file?", CccLockFile);
+  fflush(CccLockFile);
+  LogTrace("Lock file created.");
 
   return ErrorNo();
 }
 
-static void DeInit(void) {
-  if (CccLogFile != NULL && CccLogFile != stdout) {
-    fclose(CccLogFile);
-    LogTrace("Log File closed.");
+static void DeInit(int Signal) {
+  if (CccLockFile != NULL) {
+    fclose(CccLockFile);
+    LogTrace("Lock file closed.");
+    remove(ConfigLockFile);
+    LogTrace("Lock file removed.");
+  }
+  fflush(stdout);
+  LogFatal("DeInit called. Received signal: %d.", Signal);
+}
+
+static void RegDeInit(void) {
+  for (size_t i = 0; i < sizeof(ExitSignals)/sizeof(ExitSignals[0]); ++i) {
+    signal(ExitSignals[i], &DeInit);
   }
 }
 
 int main(int argc, char *argv[]) {
-  LogInfo("ccc started.");
+  // thx jcs for https://no-color.org/
+  char *NoColor = getenv("NO_COLOR");
+	LogColored = (NoColor != NULL && NoColor[0] != '\0')
+              ? false
+              : true;
 
-  char ConfigFileStr[BUFSIZE] = {0};
-  char LogFileStr[BUFSIZE] = {0};
-  bool NeedSync = true;
+  char ConfigFileStr[BUFSIZE] = "/usr/local/etc/ccc.conf";
+  bool SilentLog = false;
 
   // flag parsing
   while (true) {
@@ -114,27 +141,13 @@ int main(int argc, char *argv[]) {
       ConfigFileStr[sizeof(ConfigFileStr) - 1] = '\0';
       break;
     }
-    case 'l': {
-      size_t OptArgLen = strnlen(optarg, BUFSIZE);
-      if (OptArgLen > sizeof(LogFileStr) - 1) {
-        LogFatal("Stack Buffer overwrited "
-                 "on LogFile. %d > %d",
-                 OptArgLen, sizeof(optarg));
-      }
-      strncpy(LogFileStr, optarg, sizeof(LogFileStr) - 1);
-      LogFileStr[sizeof(LogFileStr) - 1] = '\0';
+    case 'a': {
+      LogColored = !LogColored;
       break;
     }
     case 's': {
       LogMaxVerbosity = LOG_VERBOSITY_Warn;
-      break;
-    }
-    case 'n': {
-      LogColored = false;
-      break;
-    }
-    case 'a': {
-      NeedSync = false;
+      SilentLog = true;
       break;
     }
     default: {
@@ -143,14 +156,18 @@ int main(int argc, char *argv[]) {
     }
     }
   }
-  LogTrace("Config file - '%s'.", ConfigFileStr);
-  LogTrace("Log file - '%s'.", LogFileStr);
 
-  Error Err = Init(ConfigFileStr, LogFileStr);
+  LogInfo("ccc started.");
+  LogTrace("Config file - '%s'.", ConfigFileStr);
+
+  RegDeInit();
+  LogTrace("DeInit registered.");
+
+  Error Err = Init(ConfigFileStr, SilentLog);
   if (ErrorIs(&Err)) {
     LogFatal("Error on Init: %s.", ErrorWhat(&Err));
   }
-  atexit(DeInit);
+  LogTrace("Initialization completed.");
 
   MemSizeError TotalMem = MemGetTotal();
   if (ErrorIs(&TotalMem.Err)) {
@@ -163,52 +180,46 @@ int main(int argc, char *argv[]) {
 
   LogInfo("Total mem: %.2fmib.", (double)TotalMem.Val / 1024);
   LogInfo("Free mem: %.2fmib.", (double)FreeMem.Val / 1024);
-  LogWarn("Used logging file: '%s'.", ConfigLogFile);
-
-  fflush(stdout);
-  fflush(stderr);
 
   // count errors before stop
   int32_t ErrorCounter = 0;
 
   // main loop
-  FlogInfo(CccLogFile, "ccc started normaly.");
+  LogInfo("ccc started normaly.");
   while (true) {
     FreeMem = MemGetFree();
     if (ErrorIs(&FreeMem.Err)) {
-      FlogErr(CccLogFile, "Error with MemGetTotal(): %s.", ErrorWhat(&Err));
+      LogErr("Error with MemGetTotal(): %s.", ErrorWhat(&Err));
       ErrorCounter++;
     }
 
     int32_t Percent = ((double)FreeMem.Val / TotalMem.Val) * 100;
     int32_t CleanLevel = GetCleanLevelByPercent(Percent);
-    FlogInfo(CccLogFile,
-             "Free memory amount: %.2fmib or %d%% and CleanLevel = %d",
-             (double)FreeMem.Val / 1024, Percent, CleanLevel);
+    LogInfo("Free memory amount: %.2fmib or %d%% and CleanLevel = %d",
+            (double)FreeMem.Val / 1024, Percent, CleanLevel);
 
     if (CleanLevel > 0) {
-      fflush(CccLogFile);
-      if (NeedSync) {
+      if (ConfigOptionsSync) {
         sync();
-        FlogInfo(CccLogFile, "sync() called.");
+        LogInfo("sync() called.");
       }
       Err = CleanerDropCaches(DropCachesFile, CleanLevel);
       if (ErrorIs(&Err)) {
-        FlogErr(CccLogFile, "Error with CleanerDropCaches(): %s.",
-                ErrorWhat(&Err));
+        LogErr("Error with CleanerDropCaches(): %s.",
+               ErrorWhat(&Err));
         ErrorCounter++;
       }
-      FlogInfo(CccLogFile, "Caches dropped.");
+      LogInfo("Caches dropped.");
     }
 
-    int32_t Slept = sleep(ConfigTimeoutsCheck + 1);
+    int32_t Slept = sleep(ConfigTimeoutsCheck);
     if (Slept > 0) {
-      FlogErr(CccLogFile, "Not all time slept. time left: %ds", Slept);
+      LogErr("Not all time slept. time left: %ds", Slept);
       ErrorCounter++;
     }
 
     if (ErrorCounter >= ConfigErrorMaxAmount) {
-      FlogFatal(CccLogFile, "ErrorCounter is to big. exiting");
+      LogFatal("ErrorCounter is to big. exiting");
     }
   }
 

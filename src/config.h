@@ -10,7 +10,9 @@
 
 #define ConfigFileDef "/usr/local/etc/ccc.conf"
 
-extern char ConfigLogFile[BUFSIZE];
+extern char ConfigLockFile[BUFSIZE];
+extern bool ConfigLogSilent;
+extern bool ConfigOptionsSync;
 extern int32_t ConfigLevelsFirst;
 extern int32_t ConfigLevelsSecond;
 extern int32_t ConfigLevelsThird;
