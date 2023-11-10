@@ -104,6 +104,7 @@ static void DeInit(int Signal) {
     LogTrace("Lock file removed.");
   }
   fflush(stdout);
+  fflush(stderr);
   LogFatal("DeInit called. Received signal: %d.", Signal);
 }
 
@@ -208,6 +209,8 @@ int main(int argc, char *argv[]) {
       LogInfo("Caches dropped.");
     }
 
+    fflush(stdout);
+    fflush(stderr);
     int32_t Slept = sleep(ConfigTimeoutsCheck);
     if (Slept > 0) {
       LogErr("Not all time slept. time left: %ds", Slept);
